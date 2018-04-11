@@ -101,7 +101,7 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = len(AL)
-    cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
+    cost = (-1 / m) * sum([(Y[i] * np.log(AL[i])) + ((1 - Y[i]) * (1 - AL[i])) for i in range(m)])
     return cost
 
 
