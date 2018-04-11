@@ -184,10 +184,19 @@ Comment: since the input is in grayscale we only have height and width, otherwis
     :param learning_rate:
     :param num_iterations:
     :return: parameters – the parameters learnt by the system during the training (the same parameters that were updated in the update_parameters function).
-costs – the values of the cost function (calculated by the compute_cost function). One value
-is to be saved after each 100 training iterations (e.g. 3000 iterations -> 30 values).
+                            costs – the values of the cost function (calculated by the compute_cost function). One value
+                            is to be saved after each 100 training iterations (e.g. 3000 iterations -> 30 values).
     """
-    pass
+    costs = []
+    parameters = initialize_parameters(layers_dims)
+    for i in range(num_iterations):
+        AL, caches = L_model_forward(X, parameters)
+        cost = compute_cost(AL, Y)
+        if i % 100 == 0:
+            costs.append(cost)
+        grads = L_model_backward(AL, Y, caches)
+        parameters = Update_parameters(parameters, grads, learning_rate)
+    return parameters, costs
 
 
 def Predict(X, Y, parameters):
@@ -198,7 +207,22 @@ def Predict(X, Y, parameters):
     :param parameters: a python dictionary containing the DNN architecture’s parameters
     :return: accuracy – the accuracy measure of the neural net on the provided data
     """
-    pass
+    preds, caches = L_model_forward(X, parameters)
+    preds = np.round(preds[0])
+    TP = 0
+    TN = 0
+    FP = 0
+    FN = 0
+    for pred, actual in zip(preds, Y):
+        if pred == actual and pred == 1:
+            TP += 1
+        elif pred == 1 and actual == 0:
+            FP += 1
+        elif pred == 0 and actual == 1:
+            FN += 1
+        elif pred == actual and pred == 0:
+            TN += 1
+    return (TP + TN) / (TP + TN + FP + FN)
 
 
 if __name__ == '__main__':
@@ -222,3 +246,6 @@ if __name__ == '__main__':
     assert AL.shape == (1, 40)
     cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
     assert cost.shape == (1, 40)
+    acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
+    print(acc)
+    assert 0.45 < acc < 0.55
