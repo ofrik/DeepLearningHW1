@@ -3,12 +3,12 @@ simple implementation of neural network
 
 # TODO
 ## Forward propagation
-- [ ] initialize_parameters(layer_dims)
-- [ ] linear_forward(A, W, b)
-- [ ] sigmoid(Z)
-- [ ] relu(Z)
-- [ ] linear_activation_forward(A_prev, W, B, activation)
-- [ ] L_model_forward(X, parameters)
+- [x] initialize_parameters(layer_dims)
+- [x] linear_forward(A, W, b) - not tested
+- [x] sigmoid(Z) - not tested
+- [x] relu(Z) - not tested
+- [x] linear_activation_forward(A_prev, W, B, activation) - not tested
+- [x] L_model_forward(X, parameters) - not tested
 - [ ] compute_cost(AL, Y)
 ## Backward propagation
 - [ ] linear_backward(dZ, cache)
