@@ -9,7 +9,10 @@ def initialize_parameters(layer_dims):
 
     Hint: Use the randn and zeros functions of numpy to initialize W and b, respectively
     """
-    pass
+    output = {}
+    for i, layer_size in enumerate(layer_dims[:-1]):
+        output["layer_%s" % (i)] = (np.random.randn(layer_dims[i], layer_dims[i + 1]), np.zeros(layer_dims[i + 1]))
+    return output
 
 
 def linear_forward(A, W, b):
@@ -174,4 +177,20 @@ def Predict(X, Y, parameters):
     :param parameters: a python dictionary containing the DNN architecture’s parameters
     :return: accuracy – the accuracy measure of the neural net on the provided data
     """
+    pass
+
+
+if __name__ == '__main__':
+    layers = initialize_parameters([784, 20, 7, 5, 1])
+    assert layers is not None
+    assert len(layers) == 4
+    assert list(layers.keys()) == ["layer_0", "layer_1", "layer_2", "layer_3"]
+    assert layers["layer_0"][0].shape == (784, 20)
+    assert layers["layer_0"][1].shape == (20,)
+    assert layers["layer_1"][0].shape == (20, 7)
+    assert layers["layer_1"][1].shape == (7,)
+    assert layers["layer_2"][0].shape == (7, 5)
+    assert layers["layer_2"][1].shape == (5,)
+    assert layers["layer_3"][0].shape == (5, 1)
+    assert layers["layer_4"][1].shape == (1,)
     pass
