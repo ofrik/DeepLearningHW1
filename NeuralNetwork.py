@@ -100,7 +100,9 @@ def compute_cost(AL, Y):
     :param Y: the labels vector (i.e. the ground truth)
     :return: cost – the cross-entropy cost
     """
-    pass
+    m = len(AL)
+    cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
+    return cost
 
 
 def linear_backward(dZ, cache):

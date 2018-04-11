@@ -9,7 +9,7 @@ simple implementation of neural network
 - [x] relu(Z) - not tested
 - [x] linear_activation_forward(A_prev, W, B, activation) - not tested
 - [x] L_model_forward(X, parameters) - not tested
-- [ ] compute_cost(AL, Y)
+- [x] compute_cost(AL, Y) - not tested
 ## Backward propagation
 - [ ] linear_backward(dZ, cache)
 - [ ] linear_activation_backward(dA, cache, activation)
