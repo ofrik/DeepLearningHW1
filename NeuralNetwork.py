@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 
 def initialize_parameters(layer_dims):
@@ -99,8 +98,8 @@ def compute_cost(AL, Y):
     :param Y: the labels vector (i.e. the ground truth)
     :return: cost – the cross-entropy cost
     """
-    m = len(AL)
-    cost = (-1 / m) * sum([(Y[i] * np.log(AL[i])) + ((1 - Y[i]) * (1 - AL[i])) for i in range(m)])
+    m = AL.shape[-1]
+    cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
     return cost
 
 
@@ -221,3 +220,5 @@ if __name__ == '__main__':
     assert Z.shape == (4, 1)
     AL, cache = L_model_forward(np.random.randn(784, 40), parameters)
     assert AL.shape == (1, 40)
+    cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
+    assert cost.shape == (1, 40)
