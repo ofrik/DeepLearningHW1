@@ -25,7 +25,7 @@ def linear_forward(A, W, b):
             linear_cache – a dictionary containing A, W, b and Z (stored for making the backpropagation easier to compute)
     """
     Z = np.dot(W, A) + b
-    linear_cache = {}  # TODO figure out how to store that mapping
+    linear_cache = (A, W, b, Z)
     return Z, linear_cache
 
 
