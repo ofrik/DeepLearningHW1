@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 
 def initialize_parameters(layer_dims):
@@ -11,7 +12,7 @@ def initialize_parameters(layer_dims):
     """
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
-        output["layer_%s" % (i)] = (np.random.randn(layer_dims[i], layer_dims[i + 1]), np.zeros(layer_dims[i + 1]))
+        output["layer_%s" % (i)] = (np.random.randn(layer_dims[i + 1], layer_dims[i]), np.zeros(layer_dims[i]))
     return output
 
 
@@ -34,7 +35,7 @@ def sigmoid(Z):
     :return: A – the activations of the layer
             activation_cache – returns Z, which will be useful for the backpropagation
     """
-    pass
+    return 1 / (1 + math.exp(-Z)), Z
 
 
 def relu(Z):
@@ -44,7 +45,7 @@ def relu(Z):
     :return: A – the activations of the layer
             activation_cache – returns Z, which will be useful for the backpropagation
     """
-    pass
+    return np.maximum(Z, 0), Z
 
 
 def linear_activation_forward(A_prev, W, B, activation):
@@ -185,12 +186,12 @@ if __name__ == '__main__':
     assert layers is not None
     assert len(layers) == 4
     assert list(layers.keys()) == ["layer_0", "layer_1", "layer_2", "layer_3"]
-    assert layers["layer_0"][0].shape == (784, 20)
-    assert layers["layer_0"][1].shape == (20,)
-    assert layers["layer_1"][0].shape == (20, 7)
-    assert layers["layer_1"][1].shape == (7,)
-    assert layers["layer_2"][0].shape == (7, 5)
-    assert layers["layer_2"][1].shape == (5,)
-    assert layers["layer_3"][0].shape == (5, 1)
-    assert layers["layer_4"][1].shape == (1,)
+    assert layers["layer_0"][0].shape == (20, 784)
+    assert layers["layer_0"][1].shape == (784,)
+    assert layers["layer_1"][0].shape == (7, 20)
+    assert layers["layer_1"][1].shape == (20,)
+    assert layers["layer_2"][0].shape == (5, 7)
+    assert layers["layer_2"][1].shape == (7,)
+    assert layers["layer_3"][0].shape == (1, 5)
+    assert layers["layer_3"][1].shape == (5,)
     pass
