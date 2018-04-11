@@ -25,7 +25,9 @@ def linear_forward(A, W, b):
     :return: Z – the linear component of the activation function (i.e., the value before applying the non-linear function)
             linear_cache – a dictionary containing A, W, b and Z (stored for making the backpropagation easier to compute)
     """
-    pass
+    Z = np.dot(W, A) + b
+    linear_cache = {}
+    return Z, linear_cache
 
 
 def sigmoid(Z):
@@ -35,7 +37,8 @@ def sigmoid(Z):
     :return: A – the activations of the layer
             activation_cache – returns Z, which will be useful for the backpropagation
     """
-    return 1 / (1 + math.exp(-Z)), Z
+    A = 1 / (1 + math.exp(-Z))
+    return A, Z
 
 
 def relu(Z):
@@ -45,7 +48,8 @@ def relu(Z):
     :return: A – the activations of the layer
             activation_cache – returns Z, which will be useful for the backpropagation
     """
-    return np.maximum(Z, 0), Z
+    A = np.maximum(Z, 0)
+    return A, Z
 
 
 def linear_activation_forward(A_prev, W, B, activation):
