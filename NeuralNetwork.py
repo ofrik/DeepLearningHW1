@@ -17,7 +17,7 @@ def initialize_parameters(layer_dims):
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
         output["W%s" % i] = np.random.randn(layer_dims[i + 1], layer_dims[i])
-        output["b%s" % i] = np.zeros((layer_dims[i + 1], 1))
+        output["b%s" % i] = np.random.randn(layer_dims[i + 1], 1)
     return output
 
 
@@ -107,7 +107,7 @@ def compute_cost(AL, Y):
     """
     m = AL.shape[-1]
     cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
-    return cost
+    return np.nan_to_num(cost)
 
 
 def linear_backward(dZ, cache):
@@ -126,7 +126,7 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
     db = (1. / m) * (np.sum(dZ, axis=1))
     dA_prev = np.dot(W.T, dZ)
 
-    return dA_prev, dW, db
+    return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
 
 
 def linear_activation_backward(dA, cache, activation):
@@ -160,6 +160,7 @@ def relu_backward(dA, activation_cache):
     dZ = np.array(dA)
 
     dZ[curr_Z <= 0] = 0  # because all others are just multiplied by 1
+    # dZ = np.maximum(dZ, np.zeros_like(dZ))
 
     return dZ
 
@@ -191,7 +192,7 @@ grads["db" + str(l)] = ...
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
 
-    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # the output layer gradient
+    dAL = np.nan_to_num(- (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)))  # the output layer gradient
 
     # compute sigmoid layer gradient - only done once on the last layer
     curr_cache = caches[num_layers - 1]
@@ -205,7 +206,7 @@ grads["db" + str(l)] = ...
 
     for layer in rev_inds:
         curr_cache = caches[layer]
-        tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'sigmoid')
+        tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'relu')
         Grads["dA" + str(layer + 1)] = tmp_A
         Grads["dW" + str(layer + 1)] = temp_W
         Grads["db" + str(layer + 1)] = temp_b
@@ -358,6 +359,7 @@ if __name__ == '__main__':
     assert AL.shape == (1, 40)
     cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
     assert cost.shape == (1, 40)
+    assert (True in np.isnan(cost)) == False
 
     #### Predict tests
     acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
