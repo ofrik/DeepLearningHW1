@@ -108,7 +108,19 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    cost = (-1 / m) * np.sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
+    # cost_tmp = (Y * np.log(AL)) + ((1 - Y) * (1 - AL))
+    # cost = (-1 / m) * np.sum(cost_tmp)
+    values = []
+    for i in range(m):
+        if Y[i] != 0:
+            first_part = Y[i] * np.log(AL[0][i])
+            second_part = 0
+        else:
+            first_part = 0
+            second_part = (1 - Y[i]) * (1 - AL[0][i])
+        values.append(first_part + second_part)
+    cost = (-1 / m) * sum(values)
+    # cost1 = (-1 / m) * np.sum([(Y[i] * np.log(AL[0][i])) + ((1 - Y[i]) * (1 - AL[0][i])) for i in range(m)])
     return cost
 
 
@@ -126,7 +138,7 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
 
     dA_prev = np.dot(W.T, dZ)
     dW = (1. / m) * np.dot(dZ, A_prev.T)
-    db = (1. / m) * np.sum(dZ, axis=0)
+    db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
 
     return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
 
@@ -376,3 +388,14 @@ if __name__ == '__main__':
 
     X_test_3_8, Y_test_3_8 = getData(path, fname_img_test, fname_lbl_test, [3, 8])
     X_test_7_9, Y_test_7_9 = getData(path, fname_img_test, fname_lbl_test, [7, 9])
+
+    print("%s Classifier for MNIST 3 and 8 %s" % ("#" * 40, "#" * 40))
+    params_classifier_1, costs_1 = L_layer_model(X_train_3_8.T, Y_train_3_8,
+                                                 [784, 20, 7, 5, 1], 0.009, 3000)
+    accuracy_1 = Predict(X_test_3_8.T, Y_test_3_8, params_classifier_1)
+    print("Accuracy: %s\n\n" % accuracy_1)
+    print("%s Classifier for MNIST 7 and 9 %s" % ("#" * 40, "#" * 40))
+    params_classifier_2, costs_2 = L_layer_model(X_train_7_9.T, Y_train_7_9,
+                                                 [784, 20, 7, 5, 1], 0.009, 3000)
+    accuracy_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
+    print("Accuracy: %s" % accuracy_2)
