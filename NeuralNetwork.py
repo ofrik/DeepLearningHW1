@@ -16,8 +16,8 @@ def initialize_parameters(layer_dims):
     """
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
-        output["W%s" % i] = np.random.randn(layer_dims[i + 1], layer_dims[i])
-        output["b%s" % i] = np.random.randn(layer_dims[i + 1], 1)
+        output["W%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], layer_dims[i])
+        output["b%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], 1)
     return output
 
 
@@ -91,7 +91,8 @@ def L_model_forward(X, parameters):
             activation = "sigmoid"
         else:
             activation = "relu"
-        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % layer], parameters["b%s" % layer],
+        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % (layer + 1)],
+                                                  parameters["b%s" % (layer + 1)],
                                                   activation)
         caches.append(cache)
     return A_prev, caches
@@ -140,10 +141,10 @@ dW – Gradient of the cost with respect to W (current layer l), same shape as W
 db – Gradient of the cost with respect to b (current layer l), same shape as b
     """
     if (activation == 'relu'):
-        dZ = relu_backward(dA, cache[0])
+        dZ = relu_backward(dA, cache[3])
 
     else:  # if activation is sigmoid
-        dZ = sigmoid_backward(dA, cache[0])
+        dZ = sigmoid_backward(dA, cache[3])
 
     dA_prev, dW, db = linear_backward(dZ, cache)
     return dA_prev, dW, db
@@ -341,18 +342,18 @@ if __name__ == '__main__':
     parameters = initialize_parameters([784, 20, 7, 5, 1])
     assert parameters is not None
     assert len(parameters) == 4 * 2
-    assert parameters["W0"].shape == (20, 784)
-    assert parameters["b0"].shape == (20, 1)
-    assert parameters["W1"].shape == (7, 20)
-    assert parameters["b1"].shape == (7, 1)
-    assert parameters["W2"].shape == (5, 7)
-    assert parameters["b2"].shape == (5, 1)
-    assert parameters["W3"].shape == (1, 5)
-    assert parameters["b3"].shape == (1, 1)
-    assert len(sigmoid(np.random.rand(10))[0]) == 10
-    assert len(relu(np.random.rand(10))[0]) == 10
+    assert parameters["W1"].shape == (20, 784)
+    assert parameters["b1"].shape == (20, 1)
+    assert parameters["W2"].shape == (7, 20)
+    assert parameters["b2"].shape == (7, 1)
+    assert parameters["W3"].shape == (5, 7)
+    assert parameters["b3"].shape == (5, 1)
+    assert parameters["W4"].shape == (1, 5)
+    assert parameters["b4"].shape == (1, 1)
 
     #### Forward tests
+    assert len(sigmoid(np.random.rand(10))[0]) == 10
+    assert len(relu(np.random.rand(10))[0]) == 10
     Z, _ = linear_forward(np.random.randn(3, 1), np.random.randn(4, 3), np.random.randn(4, 1))
     assert Z.shape == (4, 1)
     AL, cache = L_model_forward(np.random.randn(784, 40), parameters)
@@ -360,6 +361,10 @@ if __name__ == '__main__':
     cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
     assert cost.shape == (1, 40)
     assert (True in np.isnan(cost)) == False
+
+    #### Backward tests
+    # relu_backward()
+    # sigmoid_backward()
 
     #### Predict tests
     acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
