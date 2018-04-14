@@ -72,8 +72,8 @@ def linear_activation_forward(A_prev, W, B, activation):
     else:
         activation_function = relu
     Z, linear_cache = linear_forward(A_prev, W, B)
-    A, Z = activation_function(Z)
-    return A, linear_cache
+    A, _ = activation_function(Z)
+    return np.nan_to_num(A), linear_cache
 
 
 def L_model_forward(X, parameters):
@@ -86,13 +86,14 @@ def L_model_forward(X, parameters):
     """
     caches = []
     A_prev = X
-    for layer in range((int)(len(parameters) / 2)):
-        if layer == len(parameters) - 1:
+    num_layers = (int)(len(parameters) / 2)
+    for layer in range(1, num_layers + 1):
+        if layer == num_layers:
             activation = "sigmoid"
         else:
             activation = "relu"
-        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % (layer + 1)],
-                                                  parameters["b%s" % (layer + 1)],
+        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % layer],
+                                                  parameters["b%s" % layer],
                                                   activation)
         caches.append(cache)
     return A_prev, caches
@@ -107,8 +108,8 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
-    return np.nan_to_num(cost)
+    cost = (-1 / m) * np.sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
+    return cost
 
 
 def linear_backward(dZ, cache):
@@ -123,9 +124,9 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
     A_prev, W, b, _ = cache
     m = A_prev.shape[1]
 
-    dW = (1. / m) * (np.dot(dZ, A_prev.T))
-    db = (1. / m) * (np.sum(dZ, axis=1))
     dA_prev = np.dot(W.T, dZ)
+    dW = (1. / m) * np.dot(dZ, A_prev.T)
+    db = (1. / m) * np.sum(dZ, axis=0)
 
     return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
 
@@ -157,13 +158,12 @@ def relu_backward(dA, activation_cache):
     :param activation_cache: contains Z (stored during the forward propagation)
     :return: dZ – gradient of the cost with respect to Z
     """
-    curr_Z = activation_cache
-    dZ = np.array(dA)
+    curr_Z = activation_cache.copy()
+    curr_Z[curr_Z <= 0] = 0
 
-    dZ[curr_Z <= 0] = 0  # because all others are just multiplied by 1
     # dZ = np.maximum(dZ, np.zeros_like(dZ))
 
-    return dZ
+    return dA * curr_Z
 
 
 def sigmoid_backward(dA, activation_cache):
@@ -189,30 +189,28 @@ grads["dA" + str(l)] = ...
 grads["dW" + str(l)] = ...
 grads["db" + str(l)] = ...
     """
-    Grads = {}
+    grads = {}
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
 
     dAL = np.nan_to_num(- (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)))  # the output layer gradient
 
     # compute sigmoid layer gradient - only done once on the last layer
-    curr_cache = caches[num_layers - 1]
+    curr_cache = caches[-1]
     tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'sigmoid')
-    Grads["dA" + str(num_layers)] = tmp_A
-    Grads["dW" + str(num_layers)] = temp_W
-    Grads["db" + str(num_layers)] = temp_b
+    grads["dA%s" % num_layers] = tmp_A
+    grads["dW%s" % num_layers] = temp_W
+    grads["db%s" % num_layers] = temp_b
 
     # compute relu layers gradients
-    rev_inds = sorted(range(num_layers - 1), reverse=True)
-
-    for layer in rev_inds:
-        curr_cache = caches[layer]
+    for layer in reversed(range(1, num_layers)):
+        curr_cache = caches[layer - 1]
         tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'relu')
-        Grads["dA" + str(layer + 1)] = tmp_A
-        Grads["dW" + str(layer + 1)] = temp_W
-        Grads["db" + str(layer + 1)] = temp_b
+        grads["dA%s" % layer] = tmp_A
+        grads["dW%s" % layer] = temp_W
+        grads["db%s" % layer] = temp_b
 
-    return Grads
+    return grads
 
 
 def Update_parameters(parameters, grads, learning_rate):
@@ -223,14 +221,14 @@ def Update_parameters(parameters, grads, learning_rate):
     :param learning_rate: the learning rate used to update the parameters (the “alpha”)
     :return: parameters – the updated values of the parameters object provided as input
     """
-    num_layers = round(len(parameters) / 2)  # becauseeach layer has both b and W
+    num_layers = round(len(parameters) / 2)  # because each layer has both b and W
 
-    for layer in range(num_layers):
-        new_curr_W = parameters["W" + str(layer + 1)] - learning_rate * grads["dW" + str(layer + 1)]
-        parameters["W" + str(layer + 1)] = new_curr_W
+    for layer in range(1, num_layers + 1):
+        new_curr_W = parameters["W%s" % layer] - learning_rate * grads["dW%s" % layer]
+        parameters["W%s" % layer] = new_curr_W
 
-        new_curr_b = parameters["b" + str(layer + 1)] - learning_rate * grads["db" + str(layer + 1)]
-        parameters["b" + str(layer + 1)] = new_curr_b
+        new_curr_b = parameters["b%s" % layer] - learning_rate * grads["db%s" % layer]
+        parameters["b%s" % layer] = new_curr_b
 
     return parameters
 
@@ -251,10 +249,11 @@ Comment: since the input is in grayscale we only have height and width, otherwis
     """
     costs = []
     parameters = initialize_parameters(layers_dims)
-    for i in range(num_iterations):
+    for i in range(1, num_iterations + 1):
         AL, caches = L_model_forward(X, parameters)
         cost = compute_cost(AL, Y)
         if i % 100 == 0:
+            print("Iteration %s: cost - %s" % (i, cost))
             costs.append(cost)
         grads = L_model_backward(AL, Y, caches)
         parameters = Update_parameters(parameters, grads, learning_rate)
@@ -321,8 +320,48 @@ def getData(path, fname_img, fname_lbl, relevant_lbls):
     return X_np, Y_np
 
 
+def tests():
+    #### Build tests NN
+    parameters = initialize_parameters([784, 20, 7, 5, 1])
+    assert parameters is not None
+    assert len(parameters) == 4 * 2
+    assert parameters["W1"].shape == (20, 784)
+    assert parameters["b1"].shape == (20, 1)
+    assert parameters["W2"].shape == (7, 20)
+    assert parameters["b2"].shape == (7, 1)
+    assert parameters["W3"].shape == (5, 7)
+    assert parameters["b3"].shape == (5, 1)
+    assert parameters["W4"].shape == (1, 5)
+    assert parameters["b4"].shape == (1, 1)
+    #### Forward tests
+    assert len(sigmoid(np.random.rand(10))[0]) == 10
+    assert len(relu(np.random.rand(10))[0]) == 10
+    Z, _ = linear_forward(np.random.randn(3, 1), np.random.randn(4, 3), np.random.randn(4, 1))
+    assert Z.shape == (4, 1)
+    AL, cache = L_model_forward(np.random.randn(784, 40), parameters)
+    assert AL.shape == (1, 40)
+    cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
+    assert isinstance(cost, float)
+    #### Backward tests
+    # relu_backward()
+    # sigmoid_backward()
+    #### Predict tests
+    acc = Predict(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000), parameters)
+    print(acc)
+    assert 0.45 < acc < 0.55
+    ### Train tests
+    trained_parameters, costs = L_layer_model(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000),
+                                              [784, 20, 7, 5, 1], 0.009, 3000)
+    acc_trained = Predict(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000), trained_parameters)
+    print(acc_trained)
+    assert acc_trained > acc
+    assert len(costs) == 30
+
+
 if __name__ == '__main__':
     path = './'
+
+    # tests()
 
     #### Load training Data
     fname_img_train = os.path.join(path, 'train-images.idx3-ubyte')
@@ -337,43 +376,3 @@ if __name__ == '__main__':
 
     X_test_3_8, Y_test_3_8 = getData(path, fname_img_test, fname_lbl_test, [3, 8])
     X_test_7_9, Y_test_7_9 = getData(path, fname_img_test, fname_lbl_test, [7, 9])
-
-    #### Build tests NN
-    parameters = initialize_parameters([784, 20, 7, 5, 1])
-    assert parameters is not None
-    assert len(parameters) == 4 * 2
-    assert parameters["W1"].shape == (20, 784)
-    assert parameters["b1"].shape == (20, 1)
-    assert parameters["W2"].shape == (7, 20)
-    assert parameters["b2"].shape == (7, 1)
-    assert parameters["W3"].shape == (5, 7)
-    assert parameters["b3"].shape == (5, 1)
-    assert parameters["W4"].shape == (1, 5)
-    assert parameters["b4"].shape == (1, 1)
-
-    #### Forward tests
-    assert len(sigmoid(np.random.rand(10))[0]) == 10
-    assert len(relu(np.random.rand(10))[0]) == 10
-    Z, _ = linear_forward(np.random.randn(3, 1), np.random.randn(4, 3), np.random.randn(4, 1))
-    assert Z.shape == (4, 1)
-    AL, cache = L_model_forward(np.random.randn(784, 40), parameters)
-    assert AL.shape == (1, 40)
-    cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
-    assert cost.shape == (1, 40)
-    assert (True in np.isnan(cost)) == False
-
-    #### Backward tests
-    # relu_backward()
-    # sigmoid_backward()
-
-    #### Predict tests
-    acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
-    print(acc)
-    assert 0.45 < acc < 0.55
-
-    ### Train tests
-    trained_parameters = L_layer_model(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000),
-                                       [784, 20, 7, 5, 1], 0.009, 3000)
-    acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
-    print(acc)
-    assert acc > 0.55
