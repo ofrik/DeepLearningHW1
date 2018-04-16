@@ -1,6 +1,10 @@
 import numpy as np
+import pandas as pd
 import os
 import struct
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 def initialize_parameters(layer_dims):
@@ -13,7 +17,8 @@ def initialize_parameters(layer_dims):
     """
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
-        output[i] = (np.random.randn(layer_dims[i + 1], layer_dims[i]), np.zeros((layer_dims[i + 1], 1)))
+        output["W%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], layer_dims[i])
+        output["b%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], 1)
     return output
 
 
@@ -68,8 +73,8 @@ def linear_activation_forward(A_prev, W, B, activation):
     else:
         activation_function = relu
     Z, linear_cache = linear_forward(A_prev, W, B)
-    A, Z = activation_function(Z)
-    return A, linear_cache
+    A, _ = activation_function(Z)
+    return np.nan_to_num(A), linear_cache
 
 
 def L_model_forward(X, parameters):
@@ -82,12 +87,15 @@ def L_model_forward(X, parameters):
     """
     caches = []
     A_prev = X
-    for key, (W, b) in parameters.items():
-        if key == len(parameters) - 1:
+    num_layers = (int)(len(parameters) / 2)
+    for layer in range(1, num_layers + 1):
+        if layer == num_layers:
             activation = "sigmoid"
         else:
             activation = "relu"
-        A_prev, cache = linear_activation_forward(A_prev, W, b, activation)
+        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % layer],
+                                                  parameters["b%s" % layer],
+                                                  activation)
         caches.append(cache)
     return A_prev, caches
 
@@ -101,7 +109,20 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    cost = (-1 / m) * sum([(Y[i] * np.log(AL)) + ((1 - Y[i]) * (1 - AL)) for i in range(m)])
+    # cost_tmp = (Y * np.log(AL)) + ((1 - Y) * (1 - AL))
+    # cost = (-1 / m) * np.sum(cost_tmp)
+    values = []
+    for i in range(m):
+        if Y[i] != 0:
+            first_part = Y[i] * np.log(AL[0][i])
+            second_part = 0
+        else:
+            first_part = 0
+            second_part = (1 - Y[i]) * (1 - AL[0][i])
+            
+        values.append(first_part + second_part)
+    cost = (-1 / m) * sum(values)
+    # cost1 = (-1 / m) * np.sum([(Y[i] * np.log(AL[0][i])) + ((1 - Y[i]) * (1 - AL[0][i])) for i in range(m)])
     return cost
 
 
@@ -114,15 +135,14 @@ def linear_backward(dZ, cache):
 dW -- Gradient of the cost with respect to W (current layer l), same shape as W
 db -- Gradient of the cost with respect to b (current layer l), same shape as b
     """
-    A_prev, W, b = cache
+    A_prev, W, b, _ = cache
     m = A_prev.shape[1]
-    
-    dW = (1./m)*( np.dot(dZ , A_prev.T) )
-    db = (1./m)*( sum(dZ, axis = 1))
-    dA_prev =  np.dot(W.T,dZ)
-    
-    return dA_prev,dW,db
-    
+
+    dA_prev = np.dot(W.T, dZ)
+    dW = (1. / m) * np.dot(dZ, A_prev.T)
+    db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
+
+    return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
 
 
 def linear_activation_backward(dA, cache, activation):
@@ -135,15 +155,14 @@ def linear_activation_backward(dA, cache, activation):
 dW – Gradient of the cost with respect to W (current layer l), same shape as W
 db – Gradient of the cost with respect to b (current layer l), same shape as b
     """
-    if(activation=='relu'):
-        dZ = relu_backward(dA , cache[0])
-        
-    else: # if activation is sigmoid
-        dZ = sigmoid_backward(dA , cache[0])
-    
-    
-    dA_prev,dW,db = linear_backward(dZ ,cache)
-    return dA_prev,dW,db
+    if (activation == 'relu'):
+        dZ = relu_backward(dA, cache[3])
+
+    else:  # if activation is sigmoid
+        dZ = sigmoid_backward(dA, cache[3])
+
+    dA_prev, dW, db = linear_backward(dZ, cache)
+    return dA_prev, dW, db
 
 
 def relu_backward(dA, activation_cache):
@@ -153,12 +172,12 @@ def relu_backward(dA, activation_cache):
     :param activation_cache: contains Z (stored during the forward propagation)
     :return: dZ – gradient of the cost with respect to Z
     """
-    curr_Z = activation_cache
-    dZ = np.array(dA)
-    
-    dZ[curr_Z <= 0] = 0 # because all others are just multiplied by 1
-    
-    return dZ
+    curr_Z = activation_cache.copy()
+    curr_Z[curr_Z <= 0] = 0
+
+    # dZ = np.maximum(dZ, np.zeros_like(dZ))
+
+    return dA * curr_Z
 
 
 def sigmoid_backward(dA, activation_cache):
@@ -169,7 +188,8 @@ def sigmoid_backward(dA, activation_cache):
     :return: dZ – gradient of the cost with respect to Z
     """
     curr_Z = activation_cache
-    return dA*sigmoid(curr_Z)*(1-sigmoid(curr_Z))
+    Z_activated, _ = sigmoid(curr_Z)
+    return dA * Z_activated * (1 - Z_activated)
 
 
 def L_model_backward(AL, Y, caches):
@@ -183,32 +203,28 @@ grads["dA" + str(l)] = ...
 grads["dW" + str(l)] = ...
 grads["db" + str(l)] = ...
     """
-    Grads = {}
+    grads = {}
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
-    
-    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)) # the output layer gradient
-    
+
+    dAL = np.nan_to_num(- (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)))  # the output layer gradient
+
     # compute sigmoid layer gradient - only done once on the last layer
-    curr_cahce = caches[num_layers - 1]
-    tmp_A , temp_W , temp_b = linear_activation_backward(dAL, curr_cahce, 'sigmoid')
-    Grads["dA"+str(num_layers)] = tmp_A
-    Grads["dW"+str(num_layers)] = temp_W
-    Grads["db"+str(num_layers)] = temp_b
-    
+    curr_cache = caches[-1]
+    tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'sigmoid')
+    grads["dA%s" % num_layers] = tmp_A
+    grads["dW%s" % num_layers] = temp_W
+    grads["db%s" % num_layers] = temp_b
+
     # compute relu layers gradients
-    rev_inds = sorted(range(num_layers-1), reverse=True)
-    
-    for layer in rev_inds:
-        curr_cahce = caches[layer]
-        tmp_A , temp_W , temp_b = linear_activation_backward(dAL, curr_cahce, 'sigmoid')
-        Grads["dA"+str(layer+1)] = tmp_A
-        Grads["dW"+str(layer+1)] = temp_W
-        Grads["db"+str(layer+1)] = temp_b
-        
-        
-    return Grads
-    
+    for layer in reversed(range(1, num_layers)):
+        curr_cache = caches[layer - 1]
+        tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'relu')
+        grads["dA%s" % layer] = tmp_A
+        grads["dW%s" % layer] = temp_W
+        grads["db%s" % layer] = temp_b
+
+    return grads
 
 
 def Update_parameters(parameters, grads, learning_rate):
@@ -219,18 +235,16 @@ def Update_parameters(parameters, grads, learning_rate):
     :param learning_rate: the learning rate used to update the parameters (the “alpha”)
     :return: parameters – the updated values of the parameters object provided as input
     """
-    num_layers = round( len(parameters)/2 ) # becauseeach layer has both b and W
-    
-    for layer in range(num_layers):
-        new_curr_W = parameters["W" + str(layer+1)] - learning_rate * grads["dW" + str(layer+1)]
-        parameters["W" + str(layer+1)] = new_curr_W
-        
-        new_curr_b = parameters["b" + str(layer+1)] - learning_rate * grads["db" + str(layer+1)]
-        parameters["b" + str(layer+1)] = new_curr_b
-        
-    
+    num_layers = round(len(parameters) / 2)  # because each layer has both b and W
+
+    for layer in range(1, num_layers + 1):
+        new_curr_W = parameters["W%s" % layer] - learning_rate * grads["dW%s" % layer]
+        parameters["W%s" % layer] = new_curr_W
+
+        new_curr_b = parameters["b%s" % layer] - learning_rate * grads["db%s" % layer]
+        parameters["b%s" % layer] = new_curr_b
+
     return parameters
-    
 
 
 def L_layer_model(X, Y, layers_dims, learning_rate, num_iterations):
@@ -249,10 +263,11 @@ Comment: since the input is in grayscale we only have height and width, otherwis
     """
     costs = []
     parameters = initialize_parameters(layers_dims)
-    for i in range(num_iterations):
+    for i in range(1, num_iterations + 1):
         AL, caches = L_model_forward(X, parameters)
         cost = compute_cost(AL, Y)
         if i % 100 == 0:
+            print("Iteration %s: cost - %s" % (i, cost))
             costs.append(cost)
         grads = L_model_backward(AL, Y, caches)
         parameters = Update_parameters(parameters, grads, learning_rate)
@@ -285,7 +300,7 @@ def Predict(X, Y, parameters):
     return (TP + TN) / (TP + TN + FP + FN)
 
 
-def getData(path , fname_img , fname_lbl , relevant_lbls):
+def getData(path, fname_img, fname_lbl, relevant_lbls):
     """
     Reads the data files, and extracts only the relevant instances
     :param path: the path to folder containing the data
@@ -299,71 +314,101 @@ def getData(path , fname_img , fname_lbl , relevant_lbls):
         magic, num, rows, cols = struct.unpack(">IIII", fimg.read(16))
         img = np.fromfile(fimg, dtype=np.uint8).reshape(len(lbl), rows, cols)
 
-    
     X = []
     Y = []
     # Create an iterator which returns each image in turn
     for i in range(len(lbl)):
         curr_lbl = lbl[i]
-        if(curr_lbl == relevant_lbls[0]):
+        if (curr_lbl == relevant_lbls[0]):
             curr_img = np.array(img[i])
             X.append(curr_img.flatten())
-            Y.append(0) # will be 0 for 3\7
-        
-        if(curr_lbl == relevant_lbls[1]):
+            Y.append(0)  # will be 0 for 3\7
+
+        if (curr_lbl == relevant_lbls[1]):
             curr_img = np.array(img[i])
             X.append(curr_img.flatten())
-            Y.append(1) # will be 1 for 8\9
-            
+            Y.append(1)  # will be 1 for 8\9
+
     X_np = np.array(X)
     Y_np = np.array(Y)
-    return X_np , Y_np
-    
+    return X_np, Y_np
 
 
-if __name__ == '__main__':
-    
-    
-    path = 'C:\\python\\deep learning course\\assi 1\\DeepLearningHW1'
-
-    #### Load training Data
-    fname_img_train = os.path.join(path, 'train-images.idx3-ubyte')
-    fname_lbl_train = os.path.join(path, 'train-labels.idx1-ubyte')
-    
-    X_train , Y_train = getData(path , fname_img_train , fname_lbl_train , [3,8] )
-    
-    #### Load testing Data
-    fname_img_train = os.path.join(path, 't10k-images.idx3-ubyte')
-    fname_lbl_train = os.path.join(path, 't10k-labels.idx1-ubyte')
-    
-    X_test , Y_test = getData(path , fname_img_train , fname_lbl_train , [3,8] )
-    
-    
-    #### Build NN
+def tests():
+    #### Build tests NN
     parameters = initialize_parameters([784, 20, 7, 5, 1])
     assert parameters is not None
-    assert len(parameters) == 4
-    assert list(parameters.keys()) == [0, 1, 2, 3]
-    assert parameters[0][0].shape == (20, 784)
-    assert parameters[0][1].shape == (20, 1)
-    assert parameters[1][0].shape == (7, 20)
-    assert parameters[1][1].shape == (7, 1)
-    assert parameters[2][0].shape == (5, 7)
-    assert parameters[2][1].shape == (5, 1)
-    assert parameters[3][0].shape == (1, 5)
-    assert parameters[3][1].shape == (1, 1)
+    assert len(parameters) == 4 * 2
+    assert parameters["W1"].shape == (20, 784)
+    assert parameters["b1"].shape == (20, 1)
+    assert parameters["W2"].shape == (7, 20)
+    assert parameters["b2"].shape == (7, 1)
+    assert parameters["W3"].shape == (5, 7)
+    assert parameters["b3"].shape == (5, 1)
+    assert parameters["W4"].shape == (1, 5)
+    assert parameters["b4"].shape == (1, 1)
+    #### Forward tests
     assert len(sigmoid(np.random.rand(10))[0]) == 10
     assert len(relu(np.random.rand(10))[0]) == 10
-    
-    #### Train NN
     Z, _ = linear_forward(np.random.randn(3, 1), np.random.randn(4, 3), np.random.randn(4, 1))
     assert Z.shape == (4, 1)
     AL, cache = L_model_forward(np.random.randn(784, 40), parameters)
     assert AL.shape == (1, 40)
     cost = compute_cost(AL, np.random.random_integers(0, 1, 40))
-    assert cost.shape == (1, 40)
-    
-    #### Test NN
-    acc = Predict(np.random.randn(784, 10000), np.random.random_integers(0, 1, 10000), parameters)
+    assert isinstance(cost, float)
+    #### Backward tests
+    # relu_backward()
+    # sigmoid_backward()
+    #### Predict tests
+    acc = Predict(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000), parameters)
     print(acc)
     assert 0.45 < acc < 0.55
+    ### Train tests
+    trained_parameters, costs = L_layer_model(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000),
+                                              [784, 20, 7, 5, 1], 0.009, 3000)
+    acc_trained = Predict(np.random.randn(784, 1000), np.random.random_integers(0, 1, 1000), trained_parameters)
+    print(acc_trained)
+    assert acc_trained > acc
+    assert len(costs) == 30
+
+
+if __name__ == '__main__':
+    path = './'
+
+    # tests()
+
+    #### Load training Data
+    fname_img_train = os.path.join(path, 'train-images.idx3-ubyte')
+    fname_lbl_train = os.path.join(path, 'train-labels.idx1-ubyte')
+
+    X_train_3_8, Y_train_3_8 = getData(path, fname_img_train, fname_lbl_train, [3, 8])
+    X_train_7_9, Y_train_7_9 = getData(path, fname_img_train, fname_lbl_train, [7, 9])
+
+    #### Load testing Data
+    fname_img_test = os.path.join(path, 't10k-images.idx3-ubyte')
+    fname_lbl_test = os.path.join(path, 't10k-labels.idx1-ubyte')
+
+    X_test_3_8, Y_test_3_8 = getData(path, fname_img_test, fname_lbl_test, [3, 8])
+    X_test_7_9, Y_test_7_9 = getData(path, fname_img_test, fname_lbl_test, [7, 9])
+
+    print("%s Classifier for MNIST 3 and 8 %s" % ("#" * 40, "#" * 40))
+    params_classifier_1, costs_1 = L_layer_model(X_train_3_8.T, Y_train_3_8,
+                                                 [784, 20, 7, 5, 1], 0.009, 3000)
+    accuracy_11 = Predict(X_train_3_8.T, Y_train_3_8, params_classifier_1)
+    print("Accuracy: %s\n\n" % accuracy_11)
+    accuracy_1 = Predict(X_test_3_8.T, Y_test_3_8, params_classifier_1)
+    print("Accuracy: %s\n\n" % accuracy_1)
+    
+    my_df = pd.DataFrame(costs_1) # *****DELETE****** save cost to file for report
+    my_df.to_csv('costs_3_8.csv', index=False, header=False)
+    
+    
+    
+#    print("%s Classifier for MNIST 7 and 9 %s" % ("#" * 40, "#" * 40))
+#    params_classifier_2, costs_2 = L_layer_model(X_train_7_9.T, Y_train_7_9,
+#                                                 [784, 20, 7, 5, 1], 0.009, 3000)
+#    accuracy_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
+#    print("Accuracy: %s" % accuracy_2)
+#
+#    my_df = pd.DataFrame(costs_2) # *****DELETE****** save cost to file for report
+#    my_df.to_csv('costs_7_9.csv', index=False, header=False)
