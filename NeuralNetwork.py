@@ -137,7 +137,7 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
     m = A_prev.shape[1]
 
     dA_prev = np.dot(W.T, dZ)
-    dW = (1. / m) * np.dot(A_prev,dZ.T).reshape(W.shape)
+    dW = (1. / m) * np.dot(A_prev, dZ.T).reshape(W.shape)
     db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
 
     return dA_prev, dW, db
