@@ -17,7 +17,7 @@ def initialize_parameters(layer_dims):
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
         output["W%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], layer_dims[i])
-        output["b%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], 1)
+        output["b%s" % (i + 1)] = np.zeros((layer_dims[i + 1], 1))
     return output
 
 
@@ -31,7 +31,7 @@ def linear_forward(A, W, b):
             linear_cache – a dictionary containing A, W, b and Z (stored for making the backpropagation easier to compute)
     """
     Z = np.dot(W, A) + b
-    linear_cache = (A, W, b, Z)
+    linear_cache = (A, W, b)
     return Z, linear_cache
 
 
@@ -72,8 +72,8 @@ def linear_activation_forward(A_prev, W, B, activation):
     else:
         activation_function = relu
     Z, linear_cache = linear_forward(A_prev, W, B)
-    A, _ = activation_function(Z)
-    return np.nan_to_num(A), linear_cache
+    A, activation_cache = activation_function(Z)
+    return A, (linear_cache, activation_cache)
 
 
 def L_model_forward(X, parameters):
@@ -108,18 +108,18 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    # cost_tmp = (Y * np.log(AL)) + ((1 - Y) * (1 - AL))
-    # cost = (-1 / m) * np.sum(cost_tmp)
-    values = []
-    for i in range(m):
-        if Y[i] != 0:
-            first_part = Y[i] * np.log(AL[0][i])
-            second_part = 0
-        else:
-            first_part = 0
-            second_part = (1 - Y[i]) * (1 - AL[0][i])
-        values.append(first_part + second_part)
-    cost = (-1 / m) * sum(values)
+    cost_tmp = (Y * np.log(AL)) + ((1 - Y) * np.log(1 - AL))
+    cost = (-1 / m) * np.sum(cost_tmp)
+    # values = []
+    # for i in range(m):
+    #     if Y[i] != 0:
+    #         first_part = Y[i] * np.log(AL[0][i])
+    #         second_part = 0
+    #     else:
+    #         first_part = 0
+    #         second_part = (1 - Y[i]) * np.log(1 - AL[0][i])
+    #     values.append(first_part + second_part)
+    # cost = (-1 / m) * sum(values)
     # cost1 = (-1 / m) * np.sum([(Y[i] * np.log(AL[0][i])) + ((1 - Y[i]) * (1 - AL[0][i])) for i in range(m)])
     return cost
 
@@ -133,14 +133,14 @@ def linear_backward(dZ, cache):
 dW -- Gradient of the cost with respect to W (current layer l), same shape as W
 db -- Gradient of the cost with respect to b (current layer l), same shape as b
     """
-    A_prev, W, b, _ = cache
+    A_prev, W, b = cache
     m = A_prev.shape[1]
 
     dA_prev = np.dot(W.T, dZ)
-    dW = (1. / m) * np.dot(dZ, A_prev.T)
+    dW = (1. / m) * np.dot(A_prev,dZ.T).reshape(W.shape)
     db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
 
-    return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
+    return dA_prev, dW, db
 
 
 def linear_activation_backward(dA, cache, activation):
@@ -154,12 +154,12 @@ dW – Gradient of the cost with respect to W (current layer l), same shape as W
 db – Gradient of the cost with respect to b (current layer l), same shape as b
     """
     if (activation == 'relu'):
-        dZ = relu_backward(dA, cache[3])
+        dZ = relu_backward(dA, cache[1])
 
     else:  # if activation is sigmoid
-        dZ = sigmoid_backward(dA, cache[3])
+        dZ = sigmoid_backward(dA, cache[1])
 
-    dA_prev, dW, db = linear_backward(dZ, cache)
+    dA_prev, dW, db = linear_backward(dZ, cache[0])
     return dA_prev, dW, db
 
 
@@ -205,7 +205,7 @@ grads["db" + str(l)] = ...
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
 
-    dAL = np.nan_to_num(- (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL)))  # the output layer gradient
+    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # the output layer gradient
 
     # compute sigmoid layer gradient - only done once on the last layer
     curr_cache = caches[-1]
