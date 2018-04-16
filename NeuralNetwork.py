@@ -73,7 +73,7 @@ def linear_activation_forward(A_prev, W, B, activation):
         activation_function = relu
     Z, linear_cache = linear_forward(A_prev, W, B)
     A, activation_cache = activation_function(Z)
-    return A, (linear_cache, activation_cache)
+    return np.nan_to_num(A), (linear_cache, activation_cache)
 
 
 def L_model_forward(X, parameters):
@@ -108,19 +108,18 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    cost_tmp = (Y * np.log(AL)) + ((1 - Y) * np.log(1 - AL))
-    cost = (-1 / m) * np.sum(cost_tmp)
-    # values = []
-    # for i in range(m):
-    #     if Y[i] != 0:
-    #         first_part = Y[i] * np.log(AL[0][i])
-    #         second_part = 0
-    #     else:
-    #         first_part = 0
-    #         second_part = (1 - Y[i]) * np.log(1 - AL[0][i])
-    #     values.append(first_part + second_part)
-    # cost = (-1 / m) * sum(values)
-    # cost1 = (-1 / m) * np.sum([(Y[i] * np.log(AL[0][i])) + ((1 - Y[i]) * (1 - AL[0][i])) for i in range(m)])
+    # cost_tmp = (Y * np.log(AL)) + ((1 - Y) * np.log(1 - AL))
+    # cost = (-1 / m) * np.sum(cost_tmp)
+    values = []
+    for i in range(m):
+        if Y[i] != 0:
+            first_part = Y[i] * np.log(AL[0][i])
+            second_part = 0
+        else:
+            first_part = 0
+            second_part = (1 - Y[i]) * np.log(1 - AL[0][i])
+        values.append(first_part + second_part)
+    cost = (-1 / m) * sum(values)
     return cost
 
 
@@ -137,10 +136,10 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
     m = A_prev.shape[1]
 
     dA_prev = np.dot(W.T, dZ)
-    dW = (1. / m) * np.dot(A_prev, dZ.T).reshape(W.shape)
+    dW = (1. / m) * np.dot(A_prev, dZ.T).T
     db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
 
-    return dA_prev, dW, db
+    return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
 
 
 def linear_activation_backward(dA, cache, activation):
@@ -175,7 +174,7 @@ def relu_backward(dA, activation_cache):
 
     # dZ = np.maximum(dZ, np.zeros_like(dZ))
 
-    return dA * curr_Z
+    return np.nan_to_num(dA * curr_Z)
 
 
 def sigmoid_backward(dA, activation_cache):
@@ -205,7 +204,7 @@ grads["db" + str(l)] = ...
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
 
-    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # the output layer gradient
+    dAL = - (np.nan_to_num(np.divide(Y, AL)) - np.nan_to_num(np.divide(1 - Y, 1 - AL)))  # the output layer gradient
 
     # compute sigmoid layer gradient - only done once on the last layer
     curr_cache = caches[-1]
