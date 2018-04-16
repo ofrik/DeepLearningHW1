@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 import struct
 import warnings
@@ -118,6 +119,7 @@ def compute_cost(AL, Y):
         else:
             first_part = 0
             second_part = (1 - Y[i]) * (1 - AL[0][i])
+            
         values.append(first_part + second_part)
     cost = (-1 / m) * sum(values)
     # cost1 = (-1 / m) * np.sum([(Y[i] * np.log(AL[0][i])) + ((1 - Y[i]) * (1 - AL[0][i])) for i in range(m)])
@@ -392,10 +394,21 @@ if __name__ == '__main__':
     print("%s Classifier for MNIST 3 and 8 %s" % ("#" * 40, "#" * 40))
     params_classifier_1, costs_1 = L_layer_model(X_train_3_8.T, Y_train_3_8,
                                                  [784, 20, 7, 5, 1], 0.009, 3000)
+    accuracy_11 = Predict(X_train_3_8.T, Y_train_3_8, params_classifier_1)
+    print("Accuracy: %s\n\n" % accuracy_11)
     accuracy_1 = Predict(X_test_3_8.T, Y_test_3_8, params_classifier_1)
     print("Accuracy: %s\n\n" % accuracy_1)
-    print("%s Classifier for MNIST 7 and 9 %s" % ("#" * 40, "#" * 40))
-    params_classifier_2, costs_2 = L_layer_model(X_train_7_9.T, Y_train_7_9,
-                                                 [784, 20, 7, 5, 1], 0.009, 3000)
-    accuracy_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
-    print("Accuracy: %s" % accuracy_2)
+    
+    my_df = pd.DataFrame(costs_1) # *****DELETE****** save cost to file for report
+    my_df.to_csv('costs_3_8.csv', index=False, header=False)
+    
+    
+    
+#    print("%s Classifier for MNIST 7 and 9 %s" % ("#" * 40, "#" * 40))
+#    params_classifier_2, costs_2 = L_layer_model(X_train_7_9.T, Y_train_7_9,
+#                                                 [784, 20, 7, 5, 1], 0.009, 3000)
+#    accuracy_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
+#    print("Accuracy: %s" % accuracy_2)
+#
+#    my_df = pd.DataFrame(costs_2) # *****DELETE****** save cost to file for report
+#    my_df.to_csv('costs_7_9.csv', index=False, header=False)
