@@ -22,5 +22,5 @@ simple implementation of neural network
 - [x] Predict(X, Y, parameters) - ofri
 ## Toy use case
 - [x] extract two types of images from MNIST dataset - nir
-- [ ] create binary classifier for the types and run the experiments according to the instructions - nir
+- [x] create binary classifier for the types and run the experiments according to the instructions - nir
 - [ ] write a report about the experiment - nir + ofri
