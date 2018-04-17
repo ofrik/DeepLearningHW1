@@ -16,7 +16,7 @@ def initialize_parameters(layer_dims):
     """
     output = {}
     for i, layer_size in enumerate(layer_dims[:-1]):
-        output["W%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], layer_dims[i])
+        output["W%s" % (i + 1)] = np.random.randn(layer_dims[i + 1], layer_dims[i]) * 0.05
         output["b%s" % (i + 1)] = np.zeros((layer_dims[i + 1], 1))
     return output
 
@@ -31,7 +31,7 @@ def linear_forward(A, W, b):
             linear_cache – a dictionary containing A, W, b and Z (stored for making the backpropagation easier to compute)
     """
     Z = np.dot(W, A) + b
-    linear_cache = (A, W, b)
+    linear_cache = (A.copy(), W.copy(), b.copy())
     return Z, linear_cache
 
 
@@ -43,7 +43,7 @@ def sigmoid(Z):
             activation_cache – returns Z, which will be useful for the backpropagation
     """
     A = 1 / (1 + np.exp(-Z))
-    return A, Z
+    return A, Z.copy()
 
 
 def relu(Z):
@@ -54,7 +54,7 @@ def relu(Z):
             activation_cache – returns Z, which will be useful for the backpropagation
     """
     A = np.maximum(Z, 0)
-    return A, Z
+    return A, Z.copy()
 
 
 def linear_activation_forward(A_prev, W, B, activation):
@@ -73,7 +73,7 @@ def linear_activation_forward(A_prev, W, B, activation):
         activation_function = relu
     Z, linear_cache = linear_forward(A_prev, W, B)
     A, activation_cache = activation_function(Z)
-    return np.nan_to_num(A), (linear_cache, activation_cache)
+    return A, (linear_cache, activation_cache)
 
 
 def L_model_forward(X, parameters):
@@ -92,7 +92,7 @@ def L_model_forward(X, parameters):
             activation = "sigmoid"
         else:
             activation = "relu"
-        A_prev, cache = linear_activation_forward(A_prev, parameters["W%s" % layer],
+        A_prev, cache = linear_activation_forward(A_prev.copy(), parameters["W%s" % layer],
                                                   parameters["b%s" % layer],
                                                   activation)
         caches.append(cache)
@@ -108,18 +108,7 @@ def compute_cost(AL, Y):
     :return: cost – the cross-entropy cost
     """
     m = AL.shape[-1]
-    # cost_tmp = (Y * np.log(AL)) + ((1 - Y) * np.log(1 - AL))
-    # cost = (-1 / m) * np.sum(cost_tmp)
-    values = []
-    for i in range(m):
-        if Y[i] != 0:
-            first_part = Y[i] * np.log(AL[0][i])
-            second_part = 0
-        else:
-            first_part = 0
-            second_part = (1 - Y[i]) * np.log(1 - AL[0][i])
-        values.append(first_part + second_part)
-    cost = (-1 / m) * sum(values)
+    cost = (-1 / m) * np.sum((np.multiply(Y, np.log(AL))) + np.multiply(1. - Y, np.log(1. - AL)))
     return cost
 
 
@@ -136,10 +125,10 @@ db -- Gradient of the cost with respect to b (current layer l), same shape as b
     m = A_prev.shape[1]
 
     dA_prev = np.dot(W.T, dZ)
-    dW = (1. / m) * np.dot(A_prev, dZ.T).T
-    db = (1. / m) * np.sum(dZ, axis=1).reshape(dZ.shape[0], 1)
+    dW = (1. / m) * np.dot(dZ, A_prev.T)
+    db = (1. / m) * np.sum(dZ, axis=1, keepdims=True)
 
-    return np.nan_to_num(dA_prev), np.nan_to_num(dW), np.nan_to_num(db)
+    return dA_prev, dW, db
 
 
 def linear_activation_backward(dA, cache, activation):
@@ -169,12 +158,10 @@ def relu_backward(dA, activation_cache):
     :param activation_cache: contains Z (stored during the forward propagation)
     :return: dZ – gradient of the cost with respect to Z
     """
-    curr_Z = activation_cache.copy()
-    curr_Z[curr_Z <= 0] = 0
-
-    # dZ = np.maximum(dZ, np.zeros_like(dZ))
-
-    return np.nan_to_num(dA * curr_Z)
+    dZ = np.array(dA, copy=True)
+    Z = activation_cache
+    dZ[Z <= 0] = 0
+    return dZ
 
 
 def sigmoid_backward(dA, activation_cache):
@@ -184,9 +171,10 @@ def sigmoid_backward(dA, activation_cache):
     :param activation_cache: contains Z (stored during the forward propagation)
     :return: dZ – gradient of the cost with respect to Z
     """
-    curr_Z = activation_cache
-    Z_activated, _ = sigmoid(curr_Z)
-    return dA * Z_activated * (1 - Z_activated)
+
+    A, _ = sigmoid(activation_cache)
+    dZ = dA * A * (1.0 - A)
+    return dZ
 
 
 def L_model_backward(AL, Y, caches):
@@ -204,7 +192,8 @@ grads["db" + str(l)] = ...
     num_layers = len(caches)
     Y = Y.reshape(AL.shape)
 
-    dAL = - (np.nan_to_num(np.divide(Y, AL)) - np.nan_to_num(np.divide(1 - Y, 1 - AL)))  # the output layer gradient
+    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))  # the output layer gradient
+    # dAL = Y - AL
 
     # compute sigmoid layer gradient - only done once on the last layer
     curr_cache = caches[-1]
@@ -216,7 +205,7 @@ grads["db" + str(l)] = ...
     # compute relu layers gradients
     for layer in reversed(range(1, num_layers)):
         curr_cache = caches[layer - 1]
-        tmp_A, temp_W, temp_b = linear_activation_backward(dAL, curr_cache, 'relu')
+        tmp_A, temp_W, temp_b = linear_activation_backward(grads["dA%s" % (layer + 1)], curr_cache, 'relu')
         grads["dA%s" % layer] = tmp_A
         grads["dW%s" % layer] = temp_W
         grads["db%s" % layer] = temp_b
@@ -235,12 +224,8 @@ def Update_parameters(parameters, grads, learning_rate):
     num_layers = round(len(parameters) / 2)  # because each layer has both b and W
 
     for layer in range(1, num_layers + 1):
-        new_curr_W = parameters["W%s" % layer] - learning_rate * grads["dW%s" % layer]
-        parameters["W%s" % layer] = new_curr_W
-
-        new_curr_b = parameters["b%s" % layer] - learning_rate * grads["db%s" % layer]
-        parameters["b%s" % layer] = new_curr_b
-
+        parameters["W%s" % layer] -= learning_rate * grads["dW%s" % layer]
+        parameters["b%s" % layer] -= learning_rate * grads["db%s" % layer]
     return parameters
 
 
@@ -387,7 +372,7 @@ if __name__ == '__main__':
 
     X_test_3_8, Y_test_3_8 = getData(path, fname_img_test, fname_lbl_test, [3, 8])
     X_test_7_9, Y_test_7_9 = getData(path, fname_img_test, fname_lbl_test, [7, 9])
-
+    # np.random.seed(1)
     print("%s Classifier for MNIST 3 and 8 %s" % ("#" * 40, "#" * 40))
     params_classifier_1, costs_1 = L_layer_model(X_train_3_8.T, Y_train_3_8,
                                                  [784, 20, 7, 5, 1], 0.009, 3000)
