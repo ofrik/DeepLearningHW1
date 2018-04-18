@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import os
 import struct
 import warnings
@@ -373,13 +375,46 @@ if __name__ == '__main__':
     X_test_3_8, Y_test_3_8 = getData(path, fname_img_test, fname_lbl_test, [3, 8])
     X_test_7_9, Y_test_7_9 = getData(path, fname_img_test, fname_lbl_test, [7, 9])
     # np.random.seed(1)
+    
+    #### 3\8 Classification
     print("%s Classifier for MNIST 3 and 8 %s" % ("#" * 40, "#" * 40))
     params_classifier_1, costs_1 = L_layer_model(X_train_3_8.T, Y_train_3_8,
                                                  [784, 20, 7, 5, 1], 0.009, 3000)
-    accuracy_1 = Predict(X_test_3_8.T, Y_test_3_8, params_classifier_1)
-    print("Accuracy: %s\n\n" % accuracy_1)
+    accuracy_train_1 = Predict(X_train_3_8.T, Y_train_3_8, params_classifier_1)
+    print("Training Set Accuracy: %s\n\n" % accuracy_train_1)
+    accuracy_test_1 = Predict(X_test_3_8.T, Y_test_3_8, params_classifier_1)
+    print("Test Set Accuracy: %s\n\n" % accuracy_test_1)
+#    
+#    my_df = pd.DataFrame(costs_1) # *****DELETE****** save cost to file for report
+#    my_df.to_csv('costs_3_8.csv', index=False, header=False)
+#    
+#    x_axis = range(1,3000,100)
+#    plt.plot(x_axis,costs_1)
+#    plt.title('Cost as a Function of Iteration - MNIST "3"\"8"')
+#    plt.xlabel('Cost Value')
+#    plt.ylabel('Iteration Number')
+#    plt.show()
+    
+    
+    #### 7\9 Classification
     print("%s Classifier for MNIST 7 and 9 %s" % ("#" * 40, "#" * 40))
     params_classifier_2, costs_2 = L_layer_model(X_train_7_9.T, Y_train_7_9,
                                                  [784, 20, 7, 5, 1], 0.009, 3000)
-    accuracy_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
-    print("Accuracy: %s" % accuracy_2)
+    accuracy_train_2 = Predict(X_train_7_9.T, Y_train_7_9, params_classifier_2)
+    print("Training Set Accuracy: %s" % accuracy_train_2)
+    accuracy_test_2 = Predict(X_test_7_9.T, Y_test_7_9, params_classifier_2)
+    print("Test Set Accuracy: %s" % accuracy_test_2)
+    
+#    my_df = pd.DataFrame(costs_2) # *****DELETE****** save cost to file for report
+#    my_df.to_csv('costs_7_9.csv', index=False, header=False)
+#    
+#    x_axis = range(1,3000,100)
+#    plt.plot(x_axis,costs_2)
+#    plt.title('Cost as a Function of Iteration - MNIST "7"\"9"')
+#    plt.xlabel('Cost Value')
+#    plt.ylabel('Iteration Number')
+#    plt.show()
+    
+    
+    
+    
